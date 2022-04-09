@@ -40,16 +40,18 @@ JOB_NAME = f'{PIPELINE_NAME}-{time.strftime("%Y%m%d_%H%M%S")}'
 @dsl.pipeline(PIPELINE_NAME, description=PIPELINE_DESCRIPTION)
 def pipeline():
     
-    worker_pool_specs = {
-        "machine_spec": {
-            "machine_type": MACHINE_TYPE
-        },
-        "replica_count": 1,
-        "container_spec": {
-            "image_uri": IMAGE_URI,
-            "args": ["--sleep_time", "120"],
-        }
-    }
+    worker_pool_specs = [
+        {
+            "machine_spec": {
+                "machine_type": MACHINE_TYPE
+            },
+            "replica_count": 1,
+            "container_spec": {
+                "image_uri": IMAGE_URI,
+                "args": ["--sleep_time", "120"],
+            }
+         }
+    ]
     
     train_task = custom_job.CustomTrainingJobOp(
             project=PROJECT_ID,
