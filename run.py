@@ -34,7 +34,7 @@ flags.DEFINE_string('project', 'jk-mlops-dev', 'GCP Project')
 flags.DEFINE_string('region', 'us-central1', 'GCP Region')
 flags.DEFINE_string('vertex_sa', 'training-sa@jk-mlops-dev.iam.gserviceaccount.com', 'Vertex SA')
 flags.DEFINE_string('pipelines_sa', 'pipelines-sa@jk-mlops-dev.iam.gserviceaccount.com', 'Pipelines SA')
-flags.DEFINE_bool('enable_caching', True, 'Caching control')
+flags.DEFINE_bool('enable_caching', False, 'Caching control')
 
 def _main(argv):
 

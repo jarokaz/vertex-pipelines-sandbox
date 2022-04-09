@@ -12,43 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import json
-import time
 
+import os
+import sys
+import time
 
 from absl import flags
 from absl import app
-from typing import Any, Mapping, MutableMapping, Optional, Sequence, Union, List
+from absl import logging
 
-from kfp.v2 import dsl
-from kfp.v2 import compiler
-from kfp import components
+FLAGS = flags.FLAGS
 
-from components.jackhmmer import JackhmmerOp
+flags.DEFINE_integer('sleep_time', 20, 'Sleep time in seconds')
 
-PIPELINE_NAME = 'pipeline-2'
-PIPELINE_DESCRIPTION = 'job control'
-PROJECT_ID = 'jk-mlops-dev'
-REGION = 'us-central1'
-
-
-@dsl.pipeline(PIPELINE_NAME, description=PIPELINE_DESCRIPTION)
-def pipeline():
-    
-    task = JackhmmerOp(
-            project=PROJECT_ID,
-            location=REGION,
-        )
-    
 
 def _main(argv):
-    compiler.Compiler().compile(
-        pipeline_func=pipeline,
-        package_path=f'{PIPELINE_NAME}.json')
-
-
+    #logging.info(f'nfs {os.listdir("/mnt/nfs")}')
+    logging.info(f'Sleeping for {FLAGS.sleep_time} seconds')
+    time.sleep(FLAGS.sleep_time)
+    logging.info('Done sleeping. Going home')
+    
 if __name__ == "__main__":
     app.run(_main)
     
-
+    
+    

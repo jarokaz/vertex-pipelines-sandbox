@@ -25,22 +25,45 @@ from kfp.v2 import dsl
 from kfp.v2 import compiler
 from kfp import components
 
-from components.jackhmmer import JackhmmerOp
+from google_cloud_pipeline_components.experimental import custom_job
 
-PIPELINE_NAME = 'pipeline-2'
+PIPELINE_NAME = 'pipeline-1'
 PIPELINE_DESCRIPTION = 'job control'
 PROJECT_ID = 'jk-mlops-dev'
 REGION = 'us-central1'
+GCS_BASE_OUTPUT_DIR = 'gs://jk-vertex-us-central1/jobs'
+IMAGE_URI = "gcr.io/jk-mlops-dev/test-runner"
+MACHINE_TYPE = 'n1-standard-4'
+JOB_NAME = f'{PIPELINE_NAME}-{time.strftime("%Y%m%d_%H%M%S")}'
 
 
 @dsl.pipeline(PIPELINE_NAME, description=PIPELINE_DESCRIPTION)
 def pipeline():
     
-    task = JackhmmerOp(
+    worker_pool_specs = [
+        {
+            "machine_spec": {
+                "machine_type": MACHINE_TYPE
+            },
+            "replica_count": 1,
+            "container_spec": {
+                "image_uri": IMAGE_URI,
+                "command": ["python3", "-m", "app.task"],
+                "args": ["--sleep_time", "120"],
+            }
+         }
+    ]
+    
+    train_task = custom_job.CustomTrainingJobOp(
             project=PROJECT_ID,
             location=REGION,
+            display_name=JOB_NAME,
+            base_output_directory=GCS_BASE_OUTPUT_DIR,
+            worker_pool_specs=worker_pool_specs,
         )
     
+
+
 
 def _main(argv):
     compiler.Compiler().compile(
@@ -51,4 +74,3 @@ def _main(argv):
 if __name__ == "__main__":
     app.run(_main)
     
-
