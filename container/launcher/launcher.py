@@ -20,108 +20,99 @@ import os
 import sys
 import time
 
-from google_cloud_pipeline_components.container.v1.gcp_launcher import custom_job_remote_runner
+#from . import jackhmmer 
+#from . import hhblits
+#from . import hhsearch 
+#from . import hmmsearch
+#from . import data_pipeline
+from . import test_task
 
+_TASK_TYPE_MAP = {
+#    'Jackhmmer': jackhmmer.run_jackhmmer,
+#    'HHblits': hhblits.run_hhblits,
+#    'HHsearch': hhsearch.run_hhsearch,
+#    'Hmmsearch': hmmsearch.run_hmmsearch,
+#    'DataPipeline': data_pipeline.run_data_pipeline,
+    'TestTask': test_task.run_task
+}
 
 def _make_parent_dirs_and_return_path(file_path: str):
-  os.makedirs(os.path.dirname(file_path), exist_ok=True)
-  return file_path
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    return file_path
 
 
 def _parse_args(args):
-  """Parse command line arguments."""
-  parser = argparse.ArgumentParser(
-      prog='Vertex Pipelines service launcher', description='')
-  parser.add_argument(
-      '--project',
-      dest='project',
-      type=str,
-      required=True,
-      default=argparse.SUPPRESS)
-  parser.add_argument(
-      '--location',
-      dest='location',
-      type=str,
-      required=True,
-      default=argparse.SUPPRESS)
-  parser.add_argument(
-      '--gcp_resources',
-      dest='gcp_resources',
-      type=_make_parent_dirs_and_return_path,
-      required=True,
-      default=argparse.SUPPRESS)
-  parsed_args, _ = parser.parse_known_args(args)
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        prog='AlphaFold components remote launcher', description='Launches AlphaFold components using remote Vertex Training jobs')
+    parser.add_argument(
+      '--task', dest='task', type=str, required=True, default=argparse.SUPPRESS)
+    parser.add_argument(
+        '--project',
+        dest='project',
+        type=str,
+        required=True,
+        default=argparse.SUPPRESS)
+    parser.add_argument(
+        '--location',
+        dest='location',
+        type=str,
+        required=True,
+        default=argparse.SUPPRESS)
+    parser.add_argument(
+        '--params',
+        dest='params',
+        type=str,
+        required=True,
+        default=argparse.SUPPRESS)
+    parser.add_argument(
+        '--gcp_resources',
+        dest='gcp_resources',
+        type=_make_parent_dirs_and_return_path,
+        required=True,
+        default=argparse.SUPPRESS)
+    parser.add_argument(
+        '--executor_input',
+        dest='executor_input',
+        type=str,
+        default=argparse.SUPPRESS)
+    parser.add_argument(
+        '--runners_image',
+        dest='runners_image',
+        type=str,
+        default=argparse.SUPPRESS)
+    parsed_args, _ = parser.parse_known_args(args)
   
-  return vars(parsed_args)
-
-
-PIPELINE_NAME = 'job-control'
-PIPELINE_DESCRIPTION = 'job control'
-PROJECT_ID = 'jk-mlops-dev'
-REGION = 'us-central1'
-GCS_BASE_OUTPUT_DIR = 'gs://jk-vertex-us-central1/jobs'
-IMAGE_URI = "gcr.io/jk-mlops-dev/test-runner"
-MACHINE_TYPE = 'n1-standard-4'
-JOB_NAME = f'{PIPELINE_NAME}-{time.strftime("%Y%m%d_%H%M%S")}'
+    return vars(parsed_args)
 
 
 def main(argv):
-  """Main entry.
-  Expected input args are as follows:
-    Project - Required. The project of which the resource will be launched.
-    Region - Required. The region of which the resource will be launched.
-    Type - Required. GCP launcher is a single container. This Enum will
-        specify which resource to be launched.
-    Request payload - Required. The full serialized json of the resource spec.
-        Note this can contain the Pipeline Placeholders.
-    gcp_resources - placeholder output for returning job_id.
-  Args:
-    argv: A list of system arguments.
-  """
-  parsed_args = _parse_args(argv)
-    
-  display_name = f'RUNNER_TEST_JOB_{time.strftime("%Y%m%d_%H%M%S")}'
+    """Main entry.
+    Expected input args are as follows:
+        Project - Required. The project of which the resource will be launched.
+        Region - Required. The region of which the resource will be launched.
+        Task - Required. GCP launcher is a single container. This Enum will
+            specify which resource to be launched.
+        Request payload - Required. The full serialized json of the resource spec.
+            Note this can contain the Pipeline Placeholders.
+        gcp_resources - placeholder output for returning job_id.
+    Args:
+        argv: A list of system arguments.
+    """
+    parsed_args = _parse_args(argv)
+    task_type = parsed_args.pop('task')
 
-  worker_pool_specs = [
-        {
-            "machine_spec": {
-                "machine_type": MACHINE_TYPE
-            },
-            "replica_count": 1,
-            "container_spec": {
-                "image_uri": IMAGE_URI,
-                "command": ["python3", "-m", "app.task"],
-                "args": ["--sleep_time", "120"],
-            },
-            #"nfs_mounts": [
-            #    {
-            #        'server': '10.6.0.2',
-            #        'path': '/ref_datasets',
-            #        'mount_point': '/mnt/nfs/alphafold',
-            #    }
-            #]
-         }
-  ]
+    if task_type not in _TASK_TYPE_MAP:
+        raise ValueError(f'Unsupported task type: {task_type}')
 
-  custom_job_spec = {
-      'display_name': display_name,
-      'job_spec': {
-          'worker_pool_specs': worker_pool_specs,
-       }
-  }
-
-  print(custom_job_spec)
-
-    
-  custom_job_remote_runner.create_custom_job(
-      type="CustomJob",
-      project=parsed_args['project'],
-      location=parsed_args['location'],
-      payload=json.dumps(custom_job_spec),
-      gcp_resources=parsed_args['gcp_resources']
-  )
-
+    logging.info(f'Executing task: {task_type}')
+    _TASK_TYPE_MAP[task_type](**parsed_args)
 
 
 if __name__ == '__main__':
-  main(sys.argv[1:])
+    logging.basicConfig(format='%(asctime)s - %(message)s',
+                      level=logging.INFO, 
+                      datefmt='%d-%m-%y %H:%M:%S',
+                      stream=sys.stdout)
+
+    main(sys.argv[1:])

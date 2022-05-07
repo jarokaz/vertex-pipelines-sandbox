@@ -12,28 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import logging
 import os
 import sys
 import time
 
-from absl import flags
-from absl import app
-from absl import logging
 
-FLAGS = flags.FLAGS
-
-flags.DEFINE_integer('sleep_time', 20, 'Sleep time in seconds')
-
-
-def _main(argv):
-    #logging.info(f'nfs {os.listdir("/mnt/nfs")}')
-    logging.info(f'Sleeping for {FLAGS.sleep_time} seconds')
-    time.sleep(FLAGS.sleep_time)
-    logging.info('Done sleeping. Going home')
+def run_task(sleep_time):
     
-if __name__ == "__main__":
-    app.run(_main)
-    
+    logging.info(f'Going to sleep for {sleep_time}')
+    time.sleep(sleep_time)
+    logging.info('Done sleeping ...')
+
+
+
+if __name__=='__main__':
+    logging.basicConfig(format='%(asctime)s - %(message)s',
+                        level=logging.INFO, 
+                        datefmt='%d-%m-%y %H:%M:%S',
+                        stream=sys.stdout)
+
+    # Retrieve parameters from environment variables
+    sleep_time = int(os.environ['SLEEP_TIME'])
+    run_task(sleep_time=sleep_time)
     
     

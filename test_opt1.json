@@ -1,0 +1,47 @@
+name: Run task1
+inputs:
+- {name: project, type: String}
+- {name: location, type: String}
+- {name: sleep_time, type: Integer}
+- {name: runners_image, type: String}
+- {name: machine_type, type: String, default: n1-standard-8, optional: true}
+outputs:
+- {name: gcp_resources, type: typing.Dict}
+implementation:
+  container:
+    image: gcr.io/jk-mlops-dev/app
+    command:
+    - sh
+    - -c
+    - |2
+
+      if ! [ -x "$(command -v pip)" ]; then
+          python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip
+      fi
+
+      PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location 'kfp==1.8.12' && "$0" "$@"
+    - sh
+    - -ec
+    - |
+      program_path=$(mktemp -d)
+      printf "%s" "$0" > "$program_path/ephemeral_component.py"
+      python3 -m kfp.v2.components.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+    - "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing\
+      \ import *\n\ndef run_task1(\n    project: str,\n    location: str,\n    sleep_time:\
+      \ int,\n    runners_image: str,\n    gcp_resources: OutputPath(Dict), \n   \
+      \ machine_type: str='n1-standard-8',\n):\n\n    import logging\n    import time\n\
+      \n    from launcher import custom_job_remote_runner\n    from launcher import\
+      \ utils\n\n\n    logging.info('Starting Test runner')\n\n    RUNNER_SCRIPT =\
+      \ '/app/task.py'\n\n    env_variables = {\n        'SLEEP_TIME': sleep_time,\n\
+      \    }\n    display_name = f'TEST_JOB_{time.strftime(\"%Y%m%d_%H%M%S\")}'\n\
+      \    custom_job_spec = utils.create_custom_job_spec_for_runner(\n        display_name=display_name,\n\
+      \        script_path=RUNNER_SCRIPT,\n        machine_type=machine_type,\n  \
+      \      container_uri=runners_image,\n        env_variables=env_variables,\n\
+      \    )\n\n    custom_job_remote_runner.create_custom_job(\n        project,\n\
+      \        location,\n        custom_job_spec,\n        gcp_resources\n    )\n\
+      \n"
+    args:
+    - --executor_input
+    - {executorInput: null}
+    - --function_to_execute
+    - run_task1

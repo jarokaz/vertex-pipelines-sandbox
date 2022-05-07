@@ -12,20 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: jackhmmer_op
+name: test_op 
 description: |
-  Launch a jackhmmer job.
+  Launches a remote Jackhmmer runner 
 inputs:
 - {name: project, type: String}
-- {name: location, type: String, default: "us-central1"}
+- {name: location, type: String}
+- {name: runners_image, type: String}
+- {name: sleep_time, type: Integer}
+- {name: machine_type, type: String, optional: true, default: 'n1-standard-8'}
 outputs:
 - {name: gcp_resources, type: String}
 implementation:
   container:
-    image: gcr.io/jk-mlops-dev/test-runner:latest
-    command: [python3, -u, -m, launcher.launcher]
+    image: gcr.io/jk-mlops-dev/app:latest
+    command: [python3, -u, -m, launcher.test_task]
     args: [
       --project, {inputValue: project},
       --location, {inputValue: location},
+      --runners_image, {inputValue: runners_image},
+      --sleep_time, {inputValue: sleep_time},
+      --machine_type, {inputValue: machine_type}, 
       --gcp_resources, {outputPath: gcp_resources},
+      --executor_input, "{{$}}",
     ]

@@ -13,19 +13,13 @@
 # limitations under the License.
 
 # Base image to use for this docker
-FROM gcr.io/google-appengine/python:latest
+FROM gcr.io/ml-pipeline/google-cloud-pipeline-components:1.0.2
 
-WORKDIR /root
-
-# Upgrade pip to latest
-RUN pip3 install --upgrade pip
-
-RUN pip3 install -U google-cloud-aiplatform
-RUN pip3 install -U google-cloud-storage
-RUN pip3 install -U google-cloud-pipeline-components
+WORKDIR /
 
 ADD launcher launcher
 ADD app app
+
 
 # Note that components can override the container entry ponint.
 ENTRYPOINT ["python3","-m","app.task"]

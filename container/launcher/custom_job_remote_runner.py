@@ -1,10 +1,10 @@
-# Copyright 2021 The Kubeflow Authors. All Rights Reserved.
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,21 +20,22 @@ from os import path
 import re
 import sys
 import time
-from typing import Optional
+from typing import Optional, Dict
 
 from google.api_core import gapic_v1
 import google.auth
 import google.auth.transport.requests
 from google.cloud import aiplatform
+from google.cloud.aiplatform.utils import source_utils
+from google.cloud.aiplatform.utils import worker_spec_utils
 from google.cloud.aiplatform_v1.types import job_state as gca_job_state
 from google_cloud_pipeline_components.proto.gcp_resources_pb2 import GcpResources
 import requests
-from ...utils import execution_context
-from .utils import json_util, error_util
+from . import execution_context
 
 from google.protobuf import json_format
 
-_POLLING_INTERVAL_IN_SECONDS = 20
+_POLLING_INTERVAL_IN_SECONDS = 60
 _CONNECTION_ERROR_RETRY_LIMIT = 5
 
 _JOB_COMPLETE_STATES = (
@@ -96,9 +97,7 @@ class JobRemoteRunner():
               f'gcp_resources should contain one resource, found {len(job_resources.resources)}'
           )
 
-        job_name_group = re.findall(job_resources.resources[0].resource_uri,
-                                    f'{self.job_uri_prefix}(.*)')
-
+        job_name_group = re.findall(f'{self.job_uri_prefix}(.*)', job_resources.resources[0].resource_uri)
         if not job_name_group or not job_name_group[0]:
           raise ValueError(
               'Job Name in gcp_resource is not formatted correctly or is empty.'
@@ -111,14 +110,26 @@ class JobRemoteRunner():
     else:
       return None
 
-  def create_job(self, create_job_fn, payload) -> str:
-    """Create a job."""
+  def create_job(self, custom_job_spec) -> str:
+    """Creates a  Vertex custom job."""
+
+    #  Currently as a temporary mitigation we use a REST API directly
+    # as the SDK does not support NFS clause.
+
     parent = f'projects/{self.project}/locations/{self.location}'
-    # TODO(kevinbnaughton) remove empty fields from the spec temporarily.
-    job_spec = json_util.recursive_remove_empty(
-        json.loads(payload, strict=False))
-    create_job_response = create_job_fn(self.job_client, parent, job_spec)
-    job_name = create_job_response.name
+    #create_job_response = self.job_client.create_custom_job(
+    #        parent=parent,
+    #        custom_job=custom_job_spec
+    #    )
+    # job_name = create_job_respone.name
+
+    credentials, _ = google.auth.default()
+    authed_session = google.auth.transport.requests.AuthorizedSession(credentials)
+    job_uri = f'{self.job_uri_prefix}{parent}/customJobs'
+    create_job_response = authed_session.post(job_uri, data=json.dumps(custom_job_spec))
+    if create_job_response.status_code != 200:
+        raise RuntimeError(f'Request failed: {create_job_response.json()}')
+    job_name = create_job_response.json()['name']
 
     # Write the job proto to output.
     job_resources = GcpResources()
@@ -131,14 +142,14 @@ class JobRemoteRunner():
 
     return job_name
 
-  def poll_job(self, get_job_fn, job_name: str):
+  def poll_job(self,  job_name: str):
     """Poll the job status."""
     with execution_context.ExecutionContext(
         on_cancel=lambda: self.send_cancel_request(job_name)):
       retry_count = 0
       while True:
         try:
-          get_job_response = get_job_fn(self.job_client, job_name)
+          get_job_response = self.job_client.get_custom_job(name=job_name)
           retry_count = 0
         # Handle transient connection error.
         except ConnectionError as err:
@@ -153,7 +164,7 @@ class JobRemoteRunner():
           else:
             # TODO(ruifang) propagate the error.
             """Exit with an internal error code."""
-            error_util.exit_with_internal_error(
+            exit_with_internal_error(
                 'Request failed after %s retries.'.format(
                     _CONNECTION_ERROR_RETRY_LIMIT))
 
@@ -188,9 +199,37 @@ class JobRemoteRunner():
         'Content-type': 'application/json',
         'Authorization': 'Bearer ' + creds.token,
     }
-    # Vertex AI cancel APIs:
-    # https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.hyperparameterTuningJobs/cancel
-    # https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs/cancel
-    # https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.batchPredictionJobs/cancel
     requests.post(
         url=f'{self.job_uri_prefix}{job_name}:cancel', data='', headers=headers)
+
+
+def exit_with_internal_error(error_message: str):
+  """Exit with internal error code and log error with the given error message.
+  This function can be used when handling non-user errors.
+  """
+  logging.error(error_message)
+  sys.exit(13)
+
+
+def create_custom_job(
+    project: str,
+    location: str,
+    custom_job_spec: dict,
+    gcp_resources: str
+):
+    """Starts and monitors Vertex Training custom job."""
+    job_type = 'CustomJob'
+    remote_runner = JobRemoteRunner(job_type, project, location, gcp_resources)
+    try:
+        job_name = remote_runner.check_if_job_exists()
+        if job_name is None:
+            job_name = remote_runner.create_job(custom_job_spec)
+
+        # Poll custom job status until "JobState.JOB_STATE_SUCCEEDED"
+        remote_runner.poll_job(job_name)
+    except (ConnectionError, RuntimeError) as err:
+        exit_with_internal_error(err.args[0])
+
+
+
+

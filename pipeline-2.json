@@ -1,15 +1,24 @@
 {
   "pipelineSpec": {
     "components": {
-      "comp-jackhmmer-op": {
-        "executorLabel": "exec-jackhmmer-op",
+      "comp-test-op": {
+        "executorLabel": "exec-test-op",
         "inputDefinitions": {
           "parameters": {
             "location": {
               "type": "STRING"
             },
+            "machine_type": {
+              "type": "STRING"
+            },
             "project": {
               "type": "STRING"
+            },
+            "runners_image": {
+              "type": "STRING"
+            },
+            "sleep_time": {
+              "type": "INT"
             }
           }
         },
@@ -24,39 +33,47 @@
     },
     "deploymentSpec": {
       "executors": {
-        "exec-jackhmmer-op": {
+        "exec-test-op": {
           "container": {
             "args": [
               "--project",
               "{{$.inputs.parameters['project']}}",
               "--location",
               "{{$.inputs.parameters['location']}}",
+              "--runners_image",
+              "{{$.inputs.parameters['runners_image']}}",
+              "--sleep_time",
+              "{{$.inputs.parameters['sleep_time']}}",
+              "--machine_type",
+              "{{$.inputs.parameters['machine_type']}}",
               "--gcp_resources",
-              "{{$.outputs.parameters['gcp_resources'].output_file}}"
+              "{{$.outputs.parameters['gcp_resources'].output_file}}",
+              "--executor_input",
+              "{{$}}"
             ],
             "command": [
               "python3",
               "-u",
               "-m",
-              "launcher.launcher"
+              "launcher.test_task"
             ],
-            "image": "gcr.io/jk-mlops-dev/test-runner:latest"
+            "image": "gcr.io/jk-mlops-dev/app:latest"
           }
         }
       }
     },
     "pipelineInfo": {
-      "name": "job-control"
+      "name": "pipeline-2"
     },
     "root": {
       "dag": {
         "tasks": {
-          "jackhmmer-op": {
+          "test-op": {
             "cachingOptions": {
               "enableCache": true
             },
             "componentRef": {
-              "name": "comp-jackhmmer-op"
+              "name": "comp-test-op"
             },
             "inputs": {
               "parameters": {
@@ -67,24 +84,45 @@
                     }
                   }
                 },
+                "machine_type": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "n1-standard-8"
+                    }
+                  }
+                },
                 "project": {
                   "runtimeValue": {
                     "constantValue": {
                       "stringValue": "jk-mlops-dev"
                     }
                   }
+                },
+                "runners_image": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "gcr.io/jk-mlops-dev/app"
+                    }
+                  }
+                },
+                "sleep_time": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "intValue": "360"
+                    }
+                  }
                 }
               }
             },
             "taskInfo": {
-              "name": "jackhmmer-op"
+              "name": "test-op"
             }
           }
         }
       }
     },
     "schemaVersion": "2.0.0",
-    "sdkVersion": "kfp-1.8.11"
+    "sdkVersion": "kfp-1.8.12"
   },
   "runtimeConfig": {}
 }
