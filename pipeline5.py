@@ -26,7 +26,7 @@ from kfp.v2 import compiler
 from kfp import components
 from kfp.v2.dsl import Output, Input, Artifact, Dataset
 
-from google_cloud_pipeline_components.experimental import custom_job
+from google_cloud_pipeline_components.v1 import custom_job
 import google.cloud.aiplatform as aip
 
 from google_cloud_pipeline_components.v1.custom_job import \
@@ -34,7 +34,7 @@ from google_cloud_pipeline_components.v1.custom_job import \
 
 FLAGS = flags.FLAGS
 
-PIPELINE_NAME = 'pipeline-2'
+PIPELINE_NAME = 'pipeline-5'
 RUNNERS_IMAGE = 'gcr.io/jk-mlops-dev/app'
 
 
@@ -55,9 +55,9 @@ def test_component(
 
 nfs_mounts = [
     {
-        'server': '10.71.1.10',
-        'path': '/datasets_v1',
-        'mount_point': '/mnt/nfs/alphafold'
+          "server": "10.71.1.10",
+          "path": "/datasets_v1",
+          "mountPoint": "/mnt/nfs/alphafold"
     }
 ]
 
@@ -66,6 +66,7 @@ custom_job_op = create_custom_training_job_from_component(
     display_name='test-component',
     machine_type='n1-standard-8',
     nfs_mounts=nfs_mounts,
+    network='projects/895222332033/global/networks/default'
 )
 
 

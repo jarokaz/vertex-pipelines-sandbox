@@ -165,14 +165,14 @@
                 "network": {
                   "runtimeValue": {
                     "constantValue": {
-                      "stringValue": ""
+                      "stringValue": "projects/895222332033/global/networks/default"
                     }
                   }
                 },
                 "nfs_mounts": {
                   "runtimeValue": {
                     "constantValue": {
-                      "stringValue": "[{\"server\": \"10.71.1.10\", \"path\": \"/datasets_v1\", \"mount_point\": \"/mnt/nfs/alphafold\"}]"
+                      "stringValue": "[{\"server\": \"10.71.1.10\", \"path\": \"/datasets_v1\", \"mountPoint\": \"/mnt/nfs/alphafold\"}]"
                     }
                   }
                 },
