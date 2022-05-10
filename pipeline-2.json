@@ -1,29 +1,76 @@
 {
   "pipelineSpec": {
     "components": {
-      "comp-test-op": {
-        "executorLabel": "exec-test-op",
+      "comp-test-component": {
+        "executorLabel": "exec-test-component",
         "inputDefinitions": {
           "parameters": {
+            "base_output_directory": {
+              "type": "STRING"
+            },
+            "display_name": {
+              "type": "STRING"
+            },
+            "enable_web_access": {
+              "type": "STRING"
+            },
+            "encryption_spec_key_name": {
+              "type": "STRING"
+            },
+            "labels": {
+              "type": "STRING"
+            },
             "location": {
               "type": "STRING"
             },
-            "machine_type": {
+            "network": {
               "type": "STRING"
+            },
+            "nfs_mounts": {
+              "type": "STRING"
+            },
+            "param1": {
+              "type": "STRING"
+            },
+            "param2": {
+              "type": "INT"
             },
             "project": {
               "type": "STRING"
             },
-            "runners_image": {
+            "reserved_ip_ranges": {
               "type": "STRING"
             },
-            "sleep_time": {
-              "type": "INT"
+            "restart_job_on_worker_restart": {
+              "type": "STRING"
+            },
+            "service_account": {
+              "type": "STRING"
+            },
+            "tensorboard": {
+              "type": "STRING"
+            },
+            "timeout": {
+              "type": "STRING"
+            },
+            "worker_pool_specs": {
+              "type": "STRING"
             }
           }
         },
         "outputDefinitions": {
+          "artifacts": {
+            "a1": {
+              "artifactType": {
+                "schemaTitle": "system.Artifact",
+                "schemaVersion": "0.0.1"
+              }
+            }
+          },
           "parameters": {
+            "Output": {
+              "type": "STRING"
+            },
             "gcp_resources": {
               "type": "STRING"
             }
@@ -33,31 +80,27 @@
     },
     "deploymentSpec": {
       "executors": {
-        "exec-test-op": {
+        "exec-test-component": {
           "container": {
             "args": [
+              "--type",
+              "CustomJob",
+              "--payload",
+              "{\"display_name\": \"{{$.inputs.parameters['display_name']}}\", \"job_spec\": {\"worker_pool_specs\": {{$.inputs.parameters['worker_pool_specs']}}, \"scheduling\": {\"timeout\": \"{{$.inputs.parameters['timeout']}}\", \"restart_job_on_worker_restart\": \"{{$.inputs.parameters['restart_job_on_worker_restart']}}\"}, \"service_account\": \"{{$.inputs.parameters['service_account']}}\", \"tensorboard\": \"{{$.inputs.parameters['tensorboard']}}\", \"enable_web_access\": \"{{$.inputs.parameters['enable_web_access']}}\", \"network\": \"{{$.inputs.parameters['network']}}\", \"reserved_ip_ranges\": {{$.inputs.parameters['reserved_ip_ranges']}}, \"nfs_mounts\": {{$.inputs.parameters['nfs_mounts']}}, \"base_output_directory\": {\"output_uri_prefix\": \"{{$.inputs.parameters['base_output_directory']}}\"}}, \"labels\": {{$.inputs.parameters['labels']}}, \"encryption_spec\": {\"kms_key_name\":\"{{$.inputs.parameters['encryption_spec_key_name']}}\"}}",
               "--project",
               "{{$.inputs.parameters['project']}}",
               "--location",
               "{{$.inputs.parameters['location']}}",
-              "--runners_image",
-              "{{$.inputs.parameters['runners_image']}}",
-              "--sleep_time",
-              "{{$.inputs.parameters['sleep_time']}}",
-              "--machine_type",
-              "{{$.inputs.parameters['machine_type']}}",
               "--gcp_resources",
-              "{{$.outputs.parameters['gcp_resources'].output_file}}",
-              "--executor_input",
-              "{{$}}"
+              "{{$.outputs.parameters['gcp_resources'].output_file}}"
             ],
             "command": [
               "python3",
               "-u",
               "-m",
-              "launcher.test_task"
+              "google_cloud_pipeline_components.container.v1.gcp_launcher.launcher"
             ],
-            "image": "gcr.io/jk-mlops-dev/app:latest"
+            "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:latest"
           }
         }
       }
@@ -68,15 +111,50 @@
     "root": {
       "dag": {
         "tasks": {
-          "test-op": {
+          "test-component": {
             "cachingOptions": {
               "enableCache": true
             },
             "componentRef": {
-              "name": "comp-test-op"
+              "name": "comp-test-component"
             },
             "inputs": {
               "parameters": {
+                "base_output_directory": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": ""
+                    }
+                  }
+                },
+                "display_name": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "test-component"
+                    }
+                  }
+                },
+                "enable_web_access": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "false"
+                    }
+                  }
+                },
+                "encryption_spec_key_name": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": ""
+                    }
+                  }
+                },
+                "labels": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "{}"
+                    }
+                  }
+                },
                 "location": {
                   "runtimeValue": {
                     "constantValue": {
@@ -84,10 +162,31 @@
                     }
                   }
                 },
-                "machine_type": {
+                "network": {
                   "runtimeValue": {
                     "constantValue": {
-                      "stringValue": "n1-standard-8"
+                      "stringValue": ""
+                    }
+                  }
+                },
+                "nfs_mounts": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "[{\"server\": \"10.71.1.10\", \"path\": \"/datasets_v1\", \"mount_point\": \"/mnt/nfs/alphafold\"}]"
+                    }
+                  }
+                },
+                "param1": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "a"
+                    }
+                  }
+                },
+                "param2": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "intValue": "1"
                     }
                   }
                 },
@@ -98,24 +197,52 @@
                     }
                   }
                 },
-                "runners_image": {
+                "reserved_ip_ranges": {
                   "runtimeValue": {
                     "constantValue": {
-                      "stringValue": "gcr.io/jk-mlops-dev/app"
+                      "stringValue": "[]"
                     }
                   }
                 },
-                "sleep_time": {
+                "restart_job_on_worker_restart": {
                   "runtimeValue": {
                     "constantValue": {
-                      "intValue": "360"
+                      "stringValue": "false"
+                    }
+                  }
+                },
+                "service_account": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": ""
+                    }
+                  }
+                },
+                "tensorboard": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": ""
+                    }
+                  }
+                },
+                "timeout": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "604800s"
+                    }
+                  }
+                },
+                "worker_pool_specs": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "[{\"machine_spec\": {\"machine_type\": \"n1-standard-8\"}, \"replica_count\": 1, \"container_spec\": {\"image_uri\": \"python:3.7\", \"command\": [\"sh\", \"-c\", \"\\nif ! [ -x \\\"$(command -v pip)\\\" ]; then\\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\\nfi\\n\\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location 'kfp==1.8.12' && \\\"$0\\\" \\\"$@\\\"\\n\", \"sh\", \"-ec\", \"program_path=$(mktemp -d)\\nprintf \\\"%s\\\" \\\"$0\\\" > \\\"$program_path/ephemeral_component.py\\\"\\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \\\"$program_path/ephemeral_component.py\\\"                         \\\"$@\\\"\\n\", \"\\nimport kfp\\nfrom kfp.v2 import dsl\\nfrom kfp.v2.dsl import *\\nfrom typing import *\\n\\ndef test_component(\\n    param1: str,\\n    param2: int,\\n    a1: Output[Artifact]\\n) -> str:\\n    import time\\n    import logging\\n    import os\\n\\n    logging.info('Going to sleep')\\n    logging.info(os.listdir('/mnt/nfs/alphafold'))\\n    a1.metadata['format']='a3m'\\n\\n\"], \"args\": [\"--executor_input\", \"{{$.json_escape[1]}}\", \"--function_to_execute\", \"test_component\"]}, \"disk_spec\": {\"boot_disk_type\": \"pd-ssd\", \"boot_disk_size_gb\": 100}}]"
                     }
                   }
                 }
               }
             },
             "taskInfo": {
-              "name": "test-op"
+              "name": "test-component"
             }
           }
         }

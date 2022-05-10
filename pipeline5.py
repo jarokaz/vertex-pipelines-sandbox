@@ -24,21 +24,61 @@ from typing import Any, Mapping, MutableMapping, Optional, Sequence, Union, List
 from kfp.v2 import dsl
 from kfp.v2 import compiler
 from kfp import components
+from kfp.v2.dsl import Output, Input, Artifact, Dataset
 
 from google_cloud_pipeline_components.experimental import custom_job
 import google.cloud.aiplatform as aip
 
-from components import TestTaskOp3
+from google_cloud_pipeline_components.v1.custom_job import \
+    create_custom_training_job_from_component
 
 FLAGS = flags.FLAGS
 
 PIPELINE_NAME = 'pipeline-2'
 RUNNERS_IMAGE = 'gcr.io/jk-mlops-dev/app'
 
+
+@dsl.component
+def test_component(
+    param1: str,
+    param2: int,
+    a1: Output[Artifact]
+) -> str:
+    import time
+    import logging
+    import os
+
+    logging.info('Going to sleep')
+    logging.info(os.listdir('/mnt/nfs/alphafold'))
+    a1.metadata['format']='a3m'
+
+
+nfs_mounts = [
+    {
+        'server': '10.71.1.10',
+        'path': '/datasets_v1',
+        'mount_point': '/mnt/nfs/alphafold'
+    }
+]
+
+custom_job_op = create_custom_training_job_from_component(
+    test_component,
+    display_name='test-component',
+    machine_type='n1-standard-8',
+    nfs_mounts=nfs_mounts,
+)
+
+
+
 @dsl.pipeline(name=PIPELINE_NAME, description='test')
 def pipeline():
 
-    test_task = TestTaskOp3()
+    test_task = custom_job_op(
+        param1='a', 
+        param2=1,
+        project='jk-mlops-dev',
+        location='us-central1'
+    )
     
 def _main(argv):
     compiler.Compiler().compile(
